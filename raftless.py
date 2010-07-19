@@ -1,4 +1,7 @@
 """
+IMPORTANT! This version of raftless has been updated to work with skeinforge 2010-07-03 by Miles Lightwood (m@teamteamusa.com).
+It likely will NOT work with other versions.
+
 Raftless is a script to prepare a gcode file for raftless printing.
 
 The Raftless script has been written by Eberhard Rensch (http://www.pleasantsoftware.com/developer/3d) and is based on the skeinforge tool chain by Enrique Perez (perez_enrique@yahoo.com).
@@ -61,36 +64,39 @@ from __future__ import absolute_import
 #Init has to be imported first because it has code to workaround the python bug where relative imports don't work if the module is imported as a main module.
 import __init__
 
-from skeinforge_tools import profile
-from skeinforge_tools.meta_plugins import polyfile
-from skeinforge_tools.skeinforge_utilities import consecution
-from skeinforge_tools.skeinforge_utilities import euclidean
-from skeinforge_tools.skeinforge_utilities import gcodec
-from skeinforge_tools.skeinforge_utilities import interpret
-from skeinforge_tools.skeinforge_utilities import settings
+from fabmetheus_utilities import euclidean
+from fabmetheus_utilities import gcodec
+from fabmetheus_utilities.fabmetheus_tools import fabmetheus_interpret
+from fabmetheus_utilities import settings
+from fabmetheus_utilities.vector3 import Vector3
+from skeinforge_application.skeinforge_utilities import skeinforge_craft
+from skeinforge_application.skeinforge_utilities import skeinforge_polyfile
+from skeinforge_application.skeinforge_utilities import skeinforge_profile
+import math
 import sys
 
 __author__ = "Eberhard Rensch (eberhard@pleasantsoftware.com)"
-__date__ = "$Date: 2010/02/17 $"
+__author__ = "Miles Lightwood (m@teamteamusa.com)"
+__date__ = "$Date: 2010/07/19 $"
 __license__ = "GPL 3.0"
 
 
-def getCraftedText( fileName, text = '', repository = None ):
+def getCraftedText( fileName, text, raftlessRepository = None ):
 	"Raftless the file or text."
-	return getCraftedTextFromText( gcodec.getTextIfEmpty( fileName, text ), repository )
+	return getCraftedTextFromText( gcodec.getTextIfEmpty( fileName, text ), raftlessRepository )
 
-def getCraftedTextFromText( gcodeText, repository = None ):
+def getCraftedTextFromText( gcodeText, raftlessRepository = None ):
 	"Raftless a gcode linear move text."
 	if gcodec.isProcedureDoneOrFileIsEmpty( gcodeText, 'raft' ):
 		print( 'The gcode contains already a raft. Skipping raftless tool.' )
 		return gcodeText
 	if gcodec.isProcedureDoneOrFileIsEmpty( gcodeText, 'raftless' ):
 		return gcodeText
-	if repository == None:
-		repository = settings.getReadRepository( RaftlessRepository() )
-	if not repository.activateRaftless.value:
+	if raftlessRepository == None:
+		raftlessRepository = settings.getReadRepository( RaftlessRepository() )
+	if not raftlessRepository.activateRaftless.value:
 		return gcodeText
-	return RaftlessSkein().getCraftedGcode( gcodeText, repository )
+	return RaftlessSkein().getCraftedGcode( gcodeText, raftlessRepository )
 
 #def getRepositoryConstructor():
 #	"Get the repository constructor."
@@ -104,16 +110,16 @@ def writeOutput( fileName = '' ):
 	"Raftless a gcode linear move file."
 	fileName = interpret.getFirstTranslatorFileNameUnmodified( fileName )
 	if fileName == '':
-		return
-	consecution.writeChainTextWithNounMessage( fileName, 'raftless' )
+#		return
+		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'raftless' )
 
 
 class RaftlessRepository:
 	"A class to handle the raftless settings."
 	def __init__( self ):
 		"Set the default settings, execute title & settings fileName."
-		profile.addListsToCraftTypeRepository( 'skeinforge_tools.craft_plugins.raftless.html', self )
-		self.fileNameInput = settings.FileNameInput().getFromFileName( interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Raftless', self, '' )
+		skeinforge_profile.addListsToCraftTypeRepository( 'skeinforge_tools.craft_plugins.raftless.html', self )
+		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Raftless', self, '' )
 		self.activateRaftless = settings.BooleanSetting().getFromValue( 'Activate Raftless', self, False )
 		# ( min_value, 'Parameter Description:', self, max_value, default_value )
 		self.firstPerimeterFeedrateOverFeedrate = settings.FloatSpin().getFromValue( 0.1, '1st Perimeter Feed Rate over Feed Rate (ratio):', self, 3.0, 0.5 )
@@ -151,9 +157,9 @@ class RaftlessSkein:
 		"Adds the additional linear gcode movement for the extrusion intro."
 		splitG1Line = self.firstLinearGcodeMovement.split()
 		firstMovementLocation = gcodec.getLocationFromSplitLine(None, splitG1Line)
-		firstMovementFeedrate = gcodec.getFeedRateMinute(self.feedRateMinute/self.repository.firstPerimeterFeedrateOverFeedrate.value, splitG1Line)
-		introX = abs( self.repository.absMaxXIntro.value )
-		introY = abs( self.repository.absMaxYIntro.value )
+		firstMovementFeedrate = gcodec.getFeedRateMinute(self.feedRateMinute/self.raftlessRepository.firstPerimeterFeedrateOverFeedrate.value, splitG1Line)
+		introX = abs( self.raftlessRepository.absMaxXIntro.value )
+		introY = abs( self.raftlessRepository.absMaxYIntro.value )
 		xAxisFirst=False
 		if abs( firstMovementLocation.x ) < abs( firstMovementLocation.y ):
 			xAxisFirst=True	
@@ -199,10 +205,10 @@ class RaftlessSkein:
 			introLine = introLine.replace( word, roundedFString )
 		return introLine;	
 									  
-	def getCraftedGcode( self, gcodeText, repository ):
+	def getCraftedGcode( self, gcodeText, raftlessRepository ):
 		"Parse gcode text and store the raftless gcode."
-		self.repository = repository
-		self.wantsExtrusionIntro=self.repository.addExtrusionIntro.value
+		self.raftlessRepository = raftlessRepository
+		self.wantsExtrusionIntro=self.raftlessRepository.addExtrusionIntro.value
 		self.lines = gcodec.getTextLines( gcodeText )
 		self.parseInitialization()
 		for line in self.lines[ self.lineIndex : ]:
@@ -228,7 +234,7 @@ class RaftlessSkein:
 			if firstWord == 'M108':
 				self.setOperatingFlowString( splitLine )
 			elif firstWord == '(<operatingFeedRatePerSecond>':
-				self.feedRateMinute = 60.0 * float( splitLine[ 1 ] ) * self.repository.firstPerimeterFeedrateOverFeedrate.value
+				self.feedRateMinute = 60.0 * float( splitLine[ 1 ] ) * self.raftlessRepository.firstPerimeterFeedrateOverFeedrate.value
 			elif firstWord == '(</extruderInitialization>)':
 				self.distanceFeedRate.addLine( '(<procedureDone> raftless </procedureDone>)' )
 				return
@@ -275,14 +281,14 @@ class RaftlessSkein:
 	def setOperatingFlowString( self, splitLine ):
 		"Set the operating flow string from the split line."
 		self.operatingFlowrateString = splitLine[ 1 ][ 1 : ]
-		self.firstPerimeterFlowrateString = self.distanceFeedRate.getRounded( float( self.operatingFlowrateString ) * self.repository.firstPerimeterFlowrateOverFlowrate.value )
+		self.firstPerimeterFlowrateString = self.distanceFeedRate.getRounded( float( self.operatingFlowrateString ) * self.raftlessRepository.firstPerimeterFlowrateOverFlowrate.value )
 
 def main():
 	"Display the raftless dialog."
 	if len( sys.argv ) > 1:
 		writeOutput( ' '.join( sys.argv[ 1 : ] ) )
 	else:
-		settings.startMainLoopFromConstructor( getRepositoryConstructor() )
+		settings.startMainLoopFromConstructor( getNewRepository() )
 
 if __name__ == "__main__":
 	main()
