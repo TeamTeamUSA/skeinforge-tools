@@ -7,7 +7,29 @@ Tools for the skeinforge toolchain developed by members of the MakerBot communit
 This repo started with the Raftless tool developed by Eberhard Rensch "Zaggo", and currently maintained by Miles Lightwood "TeamTeamUSA". Raftless has been tested with skeinforge 2010-02-05.
 
 CURRENT TOOLS
+* Raftless for skeinforge bundled with ReplicatorG 0017
 * Raftless
+
+///////////////////////////////////////
+// Raftless for skeinforge bundled with ReplicatorG 0017
+///////////////////////////////////////
+
+Installation
+------------
+1. Download ReplicatorG 0017 from http://code.google.com/p/replicatorg/downloads/list
+2. Download replicatorg-0017/raftless-RepG0017.zip.
+3. Uncompress raftless-RepG0017.zip
+4. Move skeinforge.py to the skeinforge folder. Overwrite existing file.
+5. Move export.py and raftless.py to the skeinforge/skeinforge_tools folder. Overwrite existing files.
+
+Usage
+-----
+I have not been able to get raftless to work from within ReplicatorG. I have been able to get it to work via launching skeinforge and skeining a file using it.
+
+1. Launch skeinforge
+2. Open the Raftless tool. Select 'Activate Raftless'. Click Save Preferences. This will create the raftless preferences file.
+3. Open the Raft tool. Unselect 'Activate Raft'. Click Save Preferences. This will create the raft preferences file that works with raftless.
+4. Click 'Skeinforge' and select file to skein.
 
 ///////////////////////////////////////
 // Raftless - http://pleasantsoftware.com/developer/3d/2009/12/05/raftless/
